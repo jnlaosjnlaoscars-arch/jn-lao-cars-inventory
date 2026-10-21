@@ -233,12 +233,17 @@ $('detailContent').addEventListener('click',e=>{const b=e.target.closest('[data-
     // Load in smaller batches so a large photo library cannot make the entire car
     // list appear empty when it grows beyond that limit.
     const signed = [];
-    for (let start = 0; start < paths.length; start += 500) {
-      const { data: batch, error: signedError } = await client.storage
-        .from('car-images')
-        .createSignedUrls(paths.slice(start, start + 500), 3600);
-      if (signedError) throw signedError;
-      signed.push(...(batch || []));
+    for (let start = 0; start < paths.length; start += 100) {
+      try {
+        const { data: batch, error: signedError } = await client.storage
+          .from('car-images')
+          .createSignedUrls(paths.slice(start, start + 100), 3600);
+        if (signedError) throw signedError;
+        signed.push(...(batch || []));
+      } catch (error) {
+        // Keep the vehicle records visible even if a photo batch cannot be signed.
+        console.warn('Could not sign one photo batch', error);
+      }
     }
     const urls = new Map(signed.filter(x=>x.signedUrl).map(x => [x.path,x.signedUrl]));
     cars = setSignedImages(data || [], urls); render();
